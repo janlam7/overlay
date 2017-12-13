@@ -1,0 +1,33 @@
+From dad31553fd0bda00441777e091c8c9739498fb3b Mon Sep 17 00:00:00 2001
+From: tuxoko <tuxoko@gmail.com>
+Date: Thu, 19 Nov 2015 17:39:56 -0800
+Subject: [PATCH 7/7] Prevent rm modules.* when make install
+
+This was originally in e80cd06b8e0428f3ca2c62e4cb0e4ec54fda1d5c, but somehow
+was changed and not working anymore. And it will cause the following error:
+
+modprobe: ERROR: ../libkmod/libkmod.c:506 lookup_builtin_file() could not open builtin file '/lib/modules/4.2.0-18-generic/modules.builtin.bin'
+
+Signed-off-by: Chunwei Chen <david.chen@osnexus.com>
+Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Closes #501
+---
+ module/Makefile.in | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/module/Makefile.in b/module/Makefile.in
+index 41c1010..d4e62e1 100644
+--- a/module/Makefile.in
++++ b/module/Makefile.in
+@@ -26,7 +26,7 @@ modules_install:
+ 		KERNELRELEASE=@LINUX_VERSION@
+ 	@# Remove extraneous build products when packaging
+ 	kmoddir=$(DESTDIR)$(INSTALL_MOD_PATH)/lib/modules/@LINUX_VERSION@; \
+-	if [ -n $$kmoddir ]; then \
++	if [ -n "$(DESTDIR)" ]; then \
+ 		find $$kmoddir -name 'modules.*' | xargs $(RM); \
+ 	fi
+ 	sysmap=$(DESTDIR)$(INSTALL_MOD_PATH)/boot/System.map-@LINUX_VERSION@; \
+-- 
+2.4.10
+

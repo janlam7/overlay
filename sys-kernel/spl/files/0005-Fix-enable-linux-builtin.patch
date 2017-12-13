@@ -1,0 +1,48 @@
+From bcc8353027fa8b343941ccf27e0f972d7ef651b7 Mon Sep 17 00:00:00 2001
+From: Brian Behlendorf <behlendorf1@llnl.gov>
+Date: Tue, 1 Dec 2015 18:18:14 -0800
+Subject: [PATCH 5/7] Fix --enable-linux-builtin
+
+Adding VPATH support, commit 37d7cd9, required that a `src`
+and `obj` line be added to the top of the Makefiles.  They
+must be removed from the Makefiles when builtin.
+
+The code which adds the `spl/` directory to the top level
+Makefile was failing due to the addition of the `certs/` path.
+The search pattern has been adjusted to be more tolerant.
+
+Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Issue #481
+Issue #498
+---
+ copy-builtin | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/copy-builtin b/copy-builtin
+index cd98b7a..aa43073 100755
+--- a/copy-builtin
++++ b/copy-builtin
+@@ -56,6 +56,8 @@ adjust_obj_paths()
+ for MODULE in "${MODULES[@]}"
+ do
+ 	adjust_obj_paths "$KERNEL_DIR/spl/$MODULE/Makefile"
++	sed -i.bak '/obj =/d' "$KERNEL_DIR/spl/$MODULE/Makefile"
++	sed -i.bak '/src =/d' "$KERNEL_DIR/spl/$MODULE/Makefile"
+ done
+ 
+ cat > "$KERNEL_DIR/spl/Kconfig" <<"EOF"
+@@ -112,8 +114,9 @@ add_after()
+ }
+ 
+ add_after "$KERNEL_DIR/Kconfig" 'source "arch/$SRCARCH/Kconfig"' 'source "spl/Kconfig"'
+-# We must take care to build SPL before ZFS, else module initialization order will be wrong
+-sed -i 's#kernel/ mm/ fs/#kernel/ mm/ spl/ fs/#' "$KERNEL_DIR/Makefile"
++# We must take care to build SPL before ZFS, otherwise the symbols required
++# to link ZFS will not be available.
++sed -i 's#+= kernel/#+= kernel/ spl/#' "$KERNEL_DIR/Makefile"
+ 
+ echo >&2
+ echo "    $0: done." >&2
+-- 
+2.4.10
+

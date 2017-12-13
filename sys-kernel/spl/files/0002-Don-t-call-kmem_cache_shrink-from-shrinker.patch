@@ -1,0 +1,44 @@
+From 94ea0799980281f403156f0646ba8c84109265b7 Mon Sep 17 00:00:00 2001
+From: Chunwei Chen <david.chen@osnexus.com>
+Date: Fri, 23 Oct 2015 17:17:57 -0700
+Subject: [PATCH 2/7] Don't call kmem_cache_shrink from shrinker
+
+Linux slab will automatically free empty slab when number of partial slab is
+over min_partial, so we don't need to explicitly shrink it. In fact, calling
+kmem_cache_shrink from shrinker will cause heavy contention on
+kmem_cache_node->list_lock, to the point that it might cause __slab_free to
+livelock (see zfsonlinux/zfs#3936)
+
+Signed-off-by: Chunwei Chen <david.chen@osnexus.com>
+Signed-off-by: Brian Behlendorf <behlendorf1@llnl.gov>
+Closes zfsonlinux/zfs#3936
+Closes #487
+---
+ module/spl/spl-kmem-cache.c | 7 +------
+ 1 file changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/module/spl/spl-kmem-cache.c b/module/spl/spl-kmem-cache.c
+index 5a8493f..2b4ac4a 100644
+--- a/module/spl/spl-kmem-cache.c
++++ b/module/spl/spl-kmem-cache.c
+@@ -1634,16 +1634,11 @@ spl_kmem_cache_reap_now(spl_kmem_cache_t *skc, int count)
+ 	atomic_inc(&skc->skc_ref);
+ 
+ 	/*
+-	 * Execute the registered reclaim callback if it exists.  The
+-	 * per-cpu caches will be drained when is set KMC_EXPIRE_MEM.
++	 * Execute the registered reclaim callback if it exists.
+ 	 */
+ 	if (skc->skc_flags & KMC_SLAB) {
+ 		if (skc->skc_reclaim)
+ 			skc->skc_reclaim(skc->skc_private);
+-
+-		if (spl_kmem_cache_expire & KMC_EXPIRE_MEM)
+-			kmem_cache_shrink(skc->skc_linux_cache);
+-
+ 		goto out;
+ 	}
+ 
+-- 
+2.4.10
+

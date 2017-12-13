@@ -1,0 +1,49 @@
+From 458b5d2c04d3da95a26d9acfa3ef9961af408e91 Mon Sep 17 00:00:00 2001
+From: Richard Yao <richard.yao@clusterhq.com>
+Date: Wed, 4 Nov 2015 16:41:13 -0500
+Subject: [PATCH 1/7] Fix race between getf() and areleasef()
+
+If a vnode is released asynchronously through arelesef(), it is
+possible for the user process to reuse the file descriptor before
+areleasef is called. When this happens, getf() will return a stale
+reference, any operations in the kernel on that file descriptor will
+fail (as it is closed) and the operations meant for that fd will
+never occur from userspace's perspective.
+
+We correct this by detecting this condition in getf(), doing a putf on the old
+file handle, updating the file descriptor and proceeding as if everything was
+fine. When the areleasef() is done, it will harmlessly decrement the reference
+counter on the Illumos file handle.
+
+Signed-off-by: Richard Yao <ryao@gentoo.org>
+---
+ module/spl/spl-vnode.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/module/spl/spl-vnode.c b/module/spl/spl-vnode.c
+index ab9830d..86349c5 100644
+--- a/module/spl/spl-vnode.c
++++ b/module/spl/spl-vnode.c
+@@ -656,6 +656,19 @@ vn_getf(int fd)
+ 
+ 	fp = file_find(fd, current);
+ 	if (fp) {
++		lfp = fget(fd);
++		fput(fp->f_file);
++		/*
++		 * areleasef() can cause us to see a stale reference when
++		 * userspace has reused a file descriptor before areleasef()
++		 * has run. fput() the stale reference and replace it. We
++		 * retain the original reference count such that the concurrent
++		 * areleasef() will decrement its reference and terminate.
++		 */
++		if (lfp != fp->f_file) {
++			fp->f_file = lfp;
++			fp->f_vnode->v_file = lfp;
++		}
+ 		atomic_inc(&fp->f_ref);
+ 		spin_unlock(&vn_file_lock);
+ 		return (fp);
+-- 
+2.4.10
+
