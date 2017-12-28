@@ -7,14 +7,20 @@ PYTHON_COMPAT=( python2_7 )
 
 inherit autotools elisp-common python-single-r1 systemd user versionator
 
+if [[ ${PV#9999} != ${PV} ]]; then
+	inherit git-r3
+	EGIT_REPO_URI="https://github.com/gluster/glusterfs.git"
+else
+	SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(get_version_component_range '1-2')/${PV}/${P}.tar.gz"
+	KEYWORDS="~amd64 ~arm ~arm64 ~ppc ~ppc64 ~x86"
+fi
+
 DESCRIPTION="GlusterFS is a powerful network/cluster filesystem"
 HOMEPAGE="https://www.gluster.org/"
-SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(get_version_component_range '1-2')/${PV}/${P}.tar.gz"
 
 LICENSE="|| ( GPL-2 LGPL-3+ )"
 SLOT="0"
-KEYWORDS="amd64 ~arm ~arm64 ppc ppc64 x86"
-IUSE="bd-xlator crypt-xlator debug emacs +fuse +georeplication glupy infiniband libtirpc qemu-block rsyslog static-libs +syslog systemtap test +tiering vim-syntax +xml"
+IUSE="bd-xlator crypt-xlator debug emacs +fuse +georeplication glupy infiniband +libtirpc qemu-block rsyslog static-libs +syslog systemtap test +tiering vim-syntax +xml"
 
 REQUIRED_USE="georeplication? ( ${PYTHON_REQUIRED_USE} )
 	glupy? ( ${PYTHON_REQUIRED_USE} )"
@@ -60,7 +66,6 @@ SITEFILE="50${PN}-mode-gentoo.el"
 PATCHES=(
 	"${FILESDIR}/${PN}-3.12.2-poisoned-sysmacros.patch"
 	"${FILESDIR}/${PN}-3.12.2-silent_rules.patch"
-	"${FILESDIR}/${PN}-3.12.3-libtirpc.patch"
 )
 
 DOCS=( AUTHORS ChangeLog NEWS README.md THANKS )
@@ -112,7 +117,7 @@ src_configure() {
 		$(use_enable test cmocka) \
 		$(use_enable tiering) \
 		$(use_enable xml xml-output) \
-		$(use_with libtirpc) \
+		$(use_with libtirpc ipv6-default) \
 		--with-tmpfilesdir="${EPREFIX}"/etc/tmpfiles.d \
 		--docdir="${EPREFIX}"/usr/share/doc/${PF} \
 		--localstatedir="${EPREFIX}"/var
