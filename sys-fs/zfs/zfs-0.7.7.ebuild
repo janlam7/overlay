@@ -1,19 +1,16 @@
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="5"
 PYTHON_COMPAT=( python{2_7,3_4,3_5} )
 
 if [ ${PV} == "9999" ] ; then
-
 	inherit git-r3 linux-mod
 	AUTOTOOLS_AUTORECONF="1"
-	EGIT_REPO_URI="https://github.com/janlam7/${PN}.git"
-	#EGIT_COMMIT="a44e7faa6c63998a4c058901a5c587706abe56ab"
-	EGIT_BRANCH="issue/3125"
+	EGIT_REPO_URI="git://github.com/zfsonlinux/${PN}.git"
 else
 	SRC_URI="https://github.com/zfsonlinux/${PN}/releases/download/${P}/${P}.tar.gz"
-	KEYWORDS="~amd64 ~arm ~ppc ~ppc64"
+	KEYWORDS="~amd64"
 fi
 
 inherit autotools-utils bash-completion-r1 flag-o-matic linux-info python-r1 systemd toolchain-funcs udev
@@ -27,6 +24,7 @@ IUSE="custom-cflags debug kernel-builtin +rootfs test-suite static-libs"
 RESTRICT="test"
 
 COMMON_DEPEND="
+	net-libs/libtirpc
 	sys-apps/util-linux[static-libs?]
 	sys-libs/zlib[static-libs(+)?]
 	virtual/awk
@@ -53,7 +51,12 @@ RDEPEND="${COMMON_DEPEND}
 		app-arch/cpio
 		app-misc/pax-utils
 		!<sys-boot/grub-2.00-r2:2
+		!<sys-kernel/genkernel-3.5.1.1
+		!<sys-kernel/genkernel-next-67
+		!<sys-kernel/bliss-initramfs-7.1.0
+		!<sys-kernel/dracut-044-r1
 		)
+	sys-fs/udev-init-scripts
 "
 
 AT_M4DIR="config"
@@ -89,12 +92,6 @@ src_prepare() {
 		-e "s|/sbin/parted|/usr/sbin/parted|" \
 		-i scripts/common.sh.in
 
-	if use kernel-builtin
-	then
-		einfo "kernel-builtin enabled, removing module loading from"
-		einfo "systemd units."
-		sed -i -e '/modprobe\ zfs/d' etc/systemd/system/*.service.in || die
-	fi
 	autotools-utils_src_prepare
 }
 
@@ -104,11 +101,12 @@ src_configure() {
 		--bindir="${EPREFIX}/bin"
 		--sbindir="${EPREFIX}/sbin"
 		--with-config=user
-		--with-dracutdir="/usr/$(get_libdir)/dracut"
+		--with-dracutdir="${EPREFIX}/usr/lib/dracut"
 		--with-linux="${KV_DIR}"
 		--with-linux-obj="${KV_OUT_DIR}"
 		--with-udevdir="$(get_udevdir)"
-		--with-blkid
+		--with-systemdunitdir="$(systemd_get_systemunitdir)"
+		--with-systemdpresetdir="${EPREFIX}/lib/systemd/system-preset"
 		$(use_enable debug)
 	)
 	autotools-utils_src_configure
@@ -122,10 +120,6 @@ src_configure() {
 		sed -e "s:@sbindir@:${EPREFIX}/sbin:g" \
 			-e "s:@sysconfdir@:${EPREFIX}/etc:g" \
 		> "${T}/zfs-init.sh" || die
-	if use kernel-builtin
-	then
-		sed -i -e '/modprobe\ zfs/d' "${T}/zfs.service" || die
-	fi
 }
 
 src_install() {
@@ -198,6 +192,15 @@ pkg_postinst() {
 		einfo "The zfs-shutdown script is obsolete. Removing it from runlevel."
 		rm "${EROOT}etc/runlevels/shutdown/zfs-shutdown"
 	fi
+
+	systemd_reenable zfs-zed.service
+	systemd_reenable zfs-import-cache.service
+	systemd_reenable zfs-import-scan.service
+	systemd_reenable zfs-mount.service
+	systemd_reenable zfs-share.service
+	systemd_reenable zfs-import.target
+	systemd_reenable zfs.target
+	systemd_reenable zfs.service
 
 }
 
