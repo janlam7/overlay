@@ -1,16 +1,17 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Id$
 
 EAPI=5
 
-MY_P="${P/icecream/icecc}"
+MY_P="${P}"
 
-inherit base eutils user
+inherit base eutils user git-r3 linux-mod
+AUTOTOOLS_AUTORECONF="1"
+EGIT_REPO_URI="https://github.com/icecc/icecream.git"
+EGIT_COMMIT="8954f27aee0955053ef29493d8de8832d1d84d69"
 
-DESCRIPTION="icecc is a program for distributed compiling of C(++) code across several machines; based on distcc"
+DESCRIPTION="Distributed compiling of C(++) code across several machines; based on distcc"
 HOMEPAGE="https://github.com/icecc/icecream"
-SRC_URI="ftp://ftp.suse.com/pub/projects/${PN}/${MY_P}.tar.bz2"
 
 LICENSE="GPL-2"
 SLOT="0"
@@ -19,14 +20,22 @@ IUSE=""
 
 RDEPEND="
 	sys-libs/libcap-ng
+	app-text/docbook2X
 "
 DEPEND="${RDEPEND}"
 
 S="${WORKDIR}/${MY_P}"
 
+PATCHES=(
+)
+
 pkg_setup() {
 	enewgroup icecream
 	enewuser icecream -1 -1 /var/cache/icecream icecream
+}
+
+src_prepare() {
+        ./autogen.sh || die
 }
 
 src_configure() {
