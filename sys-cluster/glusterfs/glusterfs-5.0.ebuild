@@ -3,7 +3,7 @@
 
 EAPI=6
 
-PYTHON_COMPAT=( python2_7 )
+PYTHON_COMPAT=( python3_6 )
 
 inherit autotools elisp-common python-single-r1 systemd user versionator
 
@@ -11,7 +11,7 @@ if [[ ${PV#9999} != ${PV} ]]; then
 	inherit git-r3
 	EGIT_REPO_URI="https://github.com/gluster/glusterfs.git"
 else
-	SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(get_version_component_range '1-2')/${PV}/${P}.tar.gz"
+	SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(get_version_component_range '1')/${PV}/${P}.tar.gz"
 	KEYWORDS="~amd64 ~arm ~arm64 ~ppc ~ppc64 ~x86"
 fi
 
@@ -65,7 +65,6 @@ DEPEND="${RDEPEND}
 SITEFILE="50${PN}-mode-gentoo.el"
 
 PATCHES=(
-	"${FILESDIR}/${PN}-3.12.2-poisoned-sysmacros.patch"
 )
 
 DOCS=( AUTHORS ChangeLog NEWS README.md THANKS )
