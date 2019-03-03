@@ -1,6 +1,9 @@
 # Copyright 1999-2018 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
+# Needs use-readdirp=off on mount under which mounts are nested, https://lists.gluster.org/pipermail/gluster-users/2017-March/030148.html
+# Needs io-cache=off, quick-read=off on volumes which are bind mounted into containers
+
 EAPI=7
 
 #PYTHON_COMPAT=( python2_7 )
