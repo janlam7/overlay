@@ -70,7 +70,7 @@ DEPEND="${RDEPEND}
 SITEFILE="50${PN}-mode-gentoo.el"
 
 PATCHES=(
-	"${FILESDIR}/${PN}-5.1-poisoned-sysmacros.patch"
+	"${FILESDIR}/${PN}-6.0-poisoned-sysmacros.patch"
 )
 
 DOCS=( AUTHORS ChangeLog NEWS README.md THANKS )
