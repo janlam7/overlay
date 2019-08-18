@@ -1,13 +1,9 @@
-# Copyright 1999-2018 Gentoo Authors
+# Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
-
-# Needs use-readdirp=off on mount under which mounts are nested, https://lists.gluster.org/pipermail/gluster-users/2017-March/030148.html
-# Needs io-cache=off, quick-read=off on volumes which are bind mounted into containers
 
 EAPI=7
 
-#PYTHON_COMPAT=( python2_7 )
-PYTHON_COMPAT=( python3_6 )
+PYTHON_COMPAT=( python3_{5,6,7} )
 
 inherit autotools elisp-common python-single-r1 systemd user
 
@@ -15,8 +11,8 @@ if [[ ${PV#9999} != ${PV} ]]; then
 	inherit git-r3
 	EGIT_REPO_URI="https://github.com/gluster/glusterfs.git"
 else
-	SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(ver_cut '1-1')/${PV}/${P}.tar.gz"
-	KEYWORDS="~amd64 ~arm ~arm64 ppc ppc64 x86"
+	SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(ver_cut 1)/${PV}/${P}.tar.gz"
+	KEYWORDS="~amd64 ~arm ~arm64 ~ppc ~ppc64 ~x86"
 fi
 
 DESCRIPTION="GlusterFS is a powerful network/cluster filesystem"
@@ -24,27 +20,22 @@ HOMEPAGE="https://www.gluster.org/"
 
 LICENSE="|| ( GPL-2 LGPL-3+ )"
 SLOT="0"
-IUSE="bd-xlator crypt-xlator debug emacs +fuse +georeplication glupy infiniband ipv6 libressl +libtirpc qemu-block rsyslog static-libs +syslog systemtap test +tiering vim-syntax +xml"
+IUSE="debug emacs +fuse +georeplication infiniband ipv6 libressl +libtirpc rsyslog static-libs +syslog test vim-syntax +xml"
 
 REQUIRED_USE="georeplication? ( ${PYTHON_REQUIRED_USE} )
-	glupy? ( ${PYTHON_REQUIRED_USE} )
 	ipv6? ( libtirpc )"
 
 # the tests must be run as root
 RESTRICT="test"
 
 # sys-apps/util-linux is required for libuuid
-RDEPEND="bd-xlator? ( sys-fs/lvm2 )
-	!elibc_glibc? ( sys-libs/argp-standalone )
+RDEPEND="!elibc_glibc? ( sys-libs/argp-standalone )
 	emacs? ( virtual/emacs )
 	fuse? ( >=sys-fs/fuse-2.7.0:0 )
 	georeplication? ( ${PYTHON_DEPS} )
 	infiniband? ( sys-fabric/libibverbs:* sys-fabric/librdmacm:* )
 	libtirpc? ( net-libs/libtirpc:= )
 	!libtirpc? ( elibc_glibc? ( sys-libs/glibc[rpc(-)] ) )
-	qemu-block? ( dev-libs/glib:2 )
-	systemtap? ( dev-util/systemtap )
-	tiering? ( dev-db/sqlite:3 )
 	xml? ( dev-libs/libxml2 )
 	sys-libs/readline:=
 	dev-libs/libaio
@@ -69,10 +60,6 @@ DEPEND="${RDEPEND}
 
 SITEFILE="50${PN}-mode-gentoo.el"
 
-PATCHES=(
-	"${FILESDIR}/${PN}-6.0-poisoned-sysmacros.patch"
-)
-
 DOCS=( AUTHORS ChangeLog NEWS README.md THANKS )
 
 # Maintainer notes:
@@ -81,7 +68,7 @@ DOCS=( AUTHORS ChangeLog NEWS README.md THANKS )
 #   glibc or if argp-standalone is installed.
 
 pkg_setup() {
-	python_setup "python2*"
+	python_setup "python3*"
 	python-single-r1_pkg_setup
 
 	# Needed for statedumps
@@ -109,18 +96,12 @@ src_configure() {
 		--disable-silent-rules \
 		--disable-fusermount \
 		$(use_enable debug) \
-		$(use_enable bd-xlator) \
-		$(use_enable crypt-xlator) \
 		$(use_enable fuse fuse-client) \
 		$(use_enable georeplication) \
-		$(use_enable glupy) \
 		$(use_enable infiniband ibverbs) \
-		$(use_enable qemu-block) \
 		$(use_enable static-libs static) \
 		$(use_enable syslog) \
-		$(use_enable systemtap) \
 		$(use_enable test cmocka) \
-		$(use_enable tiering) \
 		$(use_enable xml xml-output) \
 		$(use libtirpc || echo --without-libtirpc) \
 		$(use ipv6 && echo --with-ipv6-default) \
@@ -190,9 +171,6 @@ src_install() {
 	if ! use static-libs; then
 		find "${D}" -type f -name '*.la' -delete || die
 	fi
-
-	# fix all shebang for python2 #560750
-	python_fix_shebang "${ED}"
 }
 
 src_test() {
