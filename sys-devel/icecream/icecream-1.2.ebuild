@@ -5,10 +5,10 @@ EAPI=5
 
 MY_P="${P}"
 
-inherit base eutils user git-r3 linux-mod
+inherit base eutils user git-r3
 AUTOTOOLS_AUTORECONF="1"
 EGIT_REPO_URI="https://github.com/icecc/icecream.git"
-EGIT_COMMIT="8954f27aee0955053ef29493d8de8832d1d84d69"
+EGIT_COMMIT="e3d10a32bc6c046d8f3d1182e75c659d4b28ed49"
 
 DESCRIPTION="Distributed compiling of C(++) code across several machines; based on distcc"
 HOMEPAGE="https://github.com/icecc/icecream"
@@ -21,6 +21,7 @@ IUSE=""
 RDEPEND="
 	sys-libs/libcap-ng
 	app-text/docbook2X
+	dev-libs/lzo
 "
 DEPEND="${RDEPEND}"
 
