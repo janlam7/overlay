@@ -8,7 +8,7 @@ MY_P="${P}"
 inherit base eutils user git-r3
 AUTOTOOLS_AUTORECONF="1"
 EGIT_REPO_URI="https://github.com/icecc/icecream.git"
-EGIT_COMMIT="e3d10a32bc6c046d8f3d1182e75c659d4b28ed49"
+EGIT_COMMIT="aa9e2fc68ee045f7fb55dab853f1cf58a80d2952"
 
 DESCRIPTION="Distributed compiling of C(++) code across several machines; based on distcc"
 HOMEPAGE="https://github.com/icecc/icecream"
@@ -22,6 +22,8 @@ RDEPEND="
 	sys-libs/libcap-ng
 	app-text/docbook2X
 	dev-libs/lzo
+	app-arch/zstd
+	app-arch/libarchive
 "
 DEPEND="${RDEPEND}"
 
