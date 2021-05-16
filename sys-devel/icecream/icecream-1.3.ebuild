@@ -1,11 +1,11 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 
 MY_P="${P}"
 
-inherit base eutils user git-r3
+inherit eutils user git-r3
 AUTOTOOLS_AUTORECONF="1"
 EGIT_REPO_URI="https://github.com/icecc/icecream.git"
 EGIT_COMMIT="aa9e2fc68ee045f7fb55dab853f1cf58a80d2952"
@@ -38,6 +38,7 @@ pkg_setup() {
 }
 
 src_prepare() {
+        default
         ./autogen.sh || die
 }
 
@@ -50,7 +51,7 @@ src_configure() {
 
 src_install() {
 	default
-	prune_libtool_files --all
+        find "${D}" -name '*.la' -delete || die
 
 	newconfd suse/sysconfig.icecream icecream
 	newinitd "${FILESDIR}"/icecream-r2 icecream
