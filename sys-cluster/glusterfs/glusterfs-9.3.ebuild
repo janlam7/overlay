@@ -1,28 +1,23 @@
-# Copyright 1999-2020 Gentoo Authors
+# Copyright 1999-2021 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
-PYTHON_COMPAT=( python3_{6..9} )
+PYTHON_COMPAT=( python3_{7..9} )
 
-inherit autotools elisp-common python-single-r1 systemd
-
-if [[ ${PV#9999} != ${PV} ]]; then
-	inherit git-r3
-	EGIT_REPO_URI="https://github.com/gluster/glusterfs.git"
-else
-	SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(ver_cut 1)/${PV}/${P}.tar.gz"
-	KEYWORDS="~amd64 ~arm ~arm64 ~ppc ~ppc64 ~x86"
-fi
+inherit autotools elisp-common python-single-r1 tmpfiles
 
 DESCRIPTION="GlusterFS is a powerful network/cluster filesystem"
-HOMEPAGE="https://www.gluster.org/"
+HOMEPAGE="https://www.gluster.org/ https://github.com/gluster/glusterfs/"
+SRC_URI="https://download.gluster.org/pub/gluster/${PN}/$(ver_cut 1)/${PV}/${P}.tar.gz"
 
 LICENSE="|| ( GPL-2 LGPL-3+ )"
-SLOT="0"
-IUSE="debug emacs +fuse +georeplication infiniband ipv6 libressl +libtirpc rsyslog static-libs +syslog test vim-syntax +xml"
+SLOT="0/${PV%%.*}"
+KEYWORDS="~amd64 ~arm ~arm64 ~ppc ~ppc64 ~x86"
 
-REQUIRED_USE="georeplication? ( ${PYTHON_REQUIRED_USE} )
+IUSE="debug emacs +fuse +georeplication ipv6 +libtirpc rsyslog static-libs +syslog test +xml"
+
+REQUIRED_USE="georeplication? ( ${PYTHON_REQUIRED_USE} xml )
 	ipv6? ( libtirpc )"
 
 # the tests must be run as root
@@ -36,17 +31,16 @@ RDEPEND="
 	dev-libs/userspace-rcu:=
 	net-libs/rpcsvc-proto
 	sys-apps/util-linux
+	sys-libs/liburing:=
 	sys-libs/readline:=
 	emacs? ( >=app-editors/emacs-23.1:* )
 	fuse? ( >=sys-fs/fuse-2.7.0:0 )
 	georeplication? ( ${PYTHON_DEPS} )
-	infiniband? ( sys-fabric/libibverbs:* sys-fabric/librdmacm:* )
 	xml? ( dev-libs/libxml2 )
 	!elibc_glibc? ( sys-libs/argp-standalone )
 	libtirpc? ( net-libs/libtirpc:= )
 	!libtirpc? ( elibc_glibc? ( sys-libs/glibc[rpc(-)] ) )
-	!libressl? ( dev-libs/openssl:=[-bindist] )
-	libressl? ( dev-libs/libressl:= )
+	dev-libs/openssl:=[-bindist(-)]
 "
 DEPEND="
 	${RDEPEND}
@@ -84,8 +78,8 @@ src_prepare() {
 	default
 
 	# build rpc-transport and xlators only once as shared libs
-	find rpc/rpc-transport xlators -name Makefile.am |
-		xargs sed -i 's|.*$(top_srcdir).*\.sym|\0 -shared|' || die
+	find rpc/rpc-transport xlators -name Makefile.am -exec \
+		sed -i 's|.*$(top_srcdir).*\.sym|\0 -shared|' {} + || die
 
 	# fix execution permissions
 	chmod +x libglusterfs/src/gen-defaults.py || die
@@ -99,20 +93,23 @@ src_configure() {
 		$(use_enable debug) \
 		$(use_enable fuse fuse-client) \
 		$(use_enable georeplication) \
-		$(use_enable infiniband ibverbs) \
 		$(use_enable static-libs static) \
 		$(use_enable syslog) \
 		$(use_enable test cmocka) \
 		$(use_enable xml xml-output) \
 		$(use libtirpc || echo --without-libtirpc) \
 		$(use ipv6 && echo --with-ipv6-default) \
-		--with-tmpfilesdir="${EPREFIX}"/etc/tmpfiles.d \
+		--with-tmpfilesdir="${EPREFIX}"/usr/lib/tmpfiles.d \
 		--localstatedir="${EPREFIX}"/var
 }
 
 src_compile() {
 	default
 	use emacs && elisp-compile extras/glusterfs-mode.el
+}
+
+src_test() {
+	./run-tests.sh || die
 }
 
 src_install() {
@@ -136,10 +133,8 @@ src_install() {
 		elisp-site-file-install "${FILESDIR}/${SITEFILE}"
 	fi
 
-	if use vim-syntax ; then
-		insinto /usr/share/vim/vimfiles/ftdetect; doins "${FILESDIR}"/${PN}.vim
-		insinto /usr/share/vim/vimfiles/syntax; doins extras/${PN}.vim
-	fi
+	insinto /usr/share/vim/vimfiles/ftdetect; doins "${FILESDIR}"/${PN}.vim
+	insinto /usr/share/vim/vimfiles/syntax; doins extras/${PN}.vim
 
 	# insert some other tools which might be useful
 	insinto /usr/share/glusterfs/scripts
@@ -152,15 +147,8 @@ src_install() {
 	# fperms 0755 /usr/share/glusterfs/scripts/*.sh
 	chmod 0755 "${ED}"/usr/share/glusterfs/scripts/*.sh || die
 
-	if use georeplication ; then
-		# move the gsync-sync-gfid tool to a binary path
-		# and set a symlink to be compliant with all other distros
-		mv "${ED}"/usr/{share/glusterfs/scripts/gsync-sync-gfid,libexec/glusterfs/} || die
-		dosym ../../../libexec/glusterfs/gsync-sync-gfid /usr/share/glusterfs/scripts/gsync-sync-gfid
-	fi
-
 	newinitd "${FILESDIR}/${PN}-r1.initd" glusterfsd
-	newinitd "${FILESDIR}/glusterd-r3.initd" glusterd
+	newinitd "${FILESDIR}/glusterd-r4.initd" glusterd
 	newconfd "${FILESDIR}/${PN}.confd" glusterfsd
 
 	keepdir /var/log/${PN}
@@ -173,10 +161,6 @@ src_install() {
 	fi
 
 	python_optimize "${ED}"
-}
-
-src_test() {
-	./run-tests.sh || die
 }
 
 pkg_postinst() {
@@ -200,6 +184,8 @@ pkg_postinst() {
 	echo
 	elog "If you are upgrading from a previous version of ${PN}, please read:"
 	elog "  http://docs.gluster.org/en/latest/Upgrade-Guide/upgrade_to_$(ver_cut '1-2')/"
+
+	tmpfiles_process /usr/lib/tmpfiles.d/gluster.conf
 
 	use emacs && elisp-site-regen
 }
