@@ -3,7 +3,7 @@
 
 EAPI=7
 
-PYTHON_COMPAT=( python3_{7..10} )
+PYTHON_COMPAT=( python3_{8..11} )
 
 inherit autotools elisp-common python-single-r1 tmpfiles systemd
 
@@ -15,9 +15,10 @@ LICENSE="|| ( GPL-2 LGPL-3+ )"
 SLOT="0/${PV%%.*}"
 KEYWORDS="amd64 ~arm ~arm64 ~loong ~ppc ppc64 ~riscv x86"
 
-IUSE="debug emacs +fuse +georeplication ipv6 +libtirpc rsyslog static-libs tcmalloc test +xml"
+IUSE="debug emacs +fuse georeplication ipv6 +libtirpc rsyslog static-libs tcmalloc test +uring xml"
 
-REQUIRED_USE="georeplication? ( ${PYTHON_REQUIRED_USE} xml )
+REQUIRED_USE="${PYTHON_REQUIRED_USE}
+	georeplication? ( xml )
 	ipv6? ( libtirpc )"
 
 # the tests must be run as root
@@ -32,7 +33,6 @@ RDEPEND="
 	net-libs/rpcsvc-proto
 	dev-libs/userspace-rcu:=
 	sys-apps/util-linux
-	sys-libs/liburing:=
 	sys-libs/readline:=
 	!elibc_glibc? ( sys-libs/argp-standalone )
 	emacs? ( >=app-editors/emacs-23.1:* )
@@ -41,6 +41,7 @@ RDEPEND="
 	libtirpc? ( net-libs/libtirpc:= )
 	!libtirpc? ( elibc_glibc? ( sys-libs/glibc[rpc(-)] ) )
 	tcmalloc? ( dev-util/google-perftools )
+	uring? ( sys-libs/liburing:= )
 	xml? ( dev-libs/libxml2 )
 "
 DEPEND="
@@ -64,6 +65,8 @@ BDEPEND="
 SITEFILE="50${PN}-mode-gentoo.el"
 
 DOCS=( AUTHORS ChangeLog NEWS README.md THANKS )
+
+QA_PKGCONFIG_VERSION=7.10.2
 
 # Maintainer notes:
 # * The build system will always configure & build argp-standalone but it'll never use it
@@ -97,6 +100,7 @@ src_configure() {
 		$(use_enable georeplication) \
 		$(use_enable static-libs static) \
 		$(use_enable test cmocka) \
+		$(use_enable uring linux-io-uring) \
 		$(use_enable xml xml-output) \
 		$(usex ipv6 --with-ipv6-default "") \
 		$(usex libtirpc "" --without-libtirpc) \
@@ -149,8 +153,8 @@ src_install() {
 	# fperms 0755 /usr/share/glusterfs/scripts/*.sh
 	chmod 0755 "${ED}"/usr/share/glusterfs/scripts/*.sh || die
 
-	newinitd "${FILESDIR}/${PN}-r1.initd" glusterfsd
-	newinitd "${FILESDIR}/glusterd-r4.initd" glusterd
+	newinitd "${FILESDIR}/glusterfsd-10.2.initd" glusterfsd
+	newinitd "${FILESDIR}/glusterd-10.2-r2.initd" glusterd
 	newconfd "${FILESDIR}/${PN}.confd" glusterfsd
 
 	keepdir /var/log/${PN}
